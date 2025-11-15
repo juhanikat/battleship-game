@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Battleship client</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    .hidden { display: none; }
+    table { border-collapse: collapse; margin: 8px 0; }
+    td { width: 28px; height: 28px; text-align: center; border: 1px solid #666; cursor: pointer; }
+    .sea { background: #cfefff; }
+    .ship { background: #999; color: #fff; }
+    .hit { background: #f33; color: #fff; }
+    .miss { background: #ddd; }
+  </style>
+</head>
+<body>
+  <div id="startView">
+    <h1>Battleship</h1>
+    <button id="startBtn">Start New Game</button>
+    <p id="startMsg"></p>
+  </div>
+
+  <div id="gameView" class="hidden">
+    <h2 id="status">Player X's turn</h2>
+    <div style="display:flex; gap:32px;">
+      <div>
+        <h3>Your grid</h3>
+        <div id="ownGrid"></div>
+      </div>
+      <div>
+        <h3>Opponent (click to fire)</h3>
+        <div id="oppGrid"></div>
+      </div>
+    </div>
+    <p id="lastResult"></p>
+    <button id="backToStart">Quit</button>
+  </div>
+
+  <div id="endView" class="hidden">
+    <h1 id="winnerMsg"></h1>
+    <button id="playAgain">Play Again</button>
+  </div>
+
+  <script>
+    async function api(path, method='GET', body=null){
+      const opts = { method, headers: {'Content-Type':'application/json'} };
+      if(body) opts.body = JSON.stringify(body);
+      const res = await fetch(path, opts);
+      return res.json();
+    }
+
+    const startBtn = document.getElementById('startBtn');
+    const startMsg = document.getElementById('startMsg');
+    const gameView = document.getElementById('gameView');
+    const startView = document.getElementById('startView');
+    const endView = document.getElementById('endView');
+    const statusEl = document.getElementById('status');
+    const oppGridEl = document.getElementById('oppGrid');
+    const ownGridEl = document.getElementById('ownGrid');
+    const lastResult = document.getElementById('lastResult');
+    const backToStart = document.getElementById('backToStart');
+    const playAgain = document.getElementById('playAgain');
+    let state = null;
+    let refreshInterval = null;
+
+    function renderGrid(container, grid, clickable=false, onClickCell=null, hideShips=false){
+      container.innerHTML = '';
+      const table = document.createElement('table');
+      grid.forEach((row, r) => {
+        const tr = document.createElement('tr');
+        row.forEach((cell, c) => {
+          const td = document.createElement('td');
+          td.className = 'sea';
+          let display = cell;
+          if(cell === '~') display = '';
+          if(cell === 'S') {
+            if(hideShips) { display = ''; td.className = 'sea'; }
+            else { td.className = 'ship'; display = 'S'; }
+          }
+          if(cell === 'X') { td.className = 'hit'; display = 'X'; }
+          if(cell === 'O') { td.className = 'miss'; display = 'O'; }
+
+          td.textContent = display;
+          if(clickable){
+            td.addEventListener('click', () => onClickCell && onClickCell(r, c));
+          } else {
+            td.style.cursor = 'default';
+          }
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+      container.appendChild(table);
+    }
+
+    async function refreshState(){
+      try {
+        const json = await api('/api/state');
+        state = json;
+        if(state.error){ startMsg.textContent = state.error; return; }
+        const me = state.current_player;
+        statusEl.textContent = state.winner ? 'Game over' : `Player ${state.current_player}'s turn`;
+        lastResult.textContent = '';
+        const perspective = state.current_player || 1;
+        let ownGrid, oppTracking;
+        if(perspective === 1){
+          ownGrid = state.p1_grid;
+          oppTracking = state.p1_tracking;
+        } else {
+          ownGrid = state.p2_grid;
+          oppTracking = state.p2_tracking;
+        }
+        renderGrid(ownGridEl, ownGrid, false, null, false);
+        renderGrid(oppGridEl, oppTracking, state.winner ? false : true, onFireClick, true);
+
+        if(state.winner){
+          startView.classList.add('hidden');
+          gameView.classList.add('hidden');
+          endView.classList.remove('hidden');
+          document.getElementById('winnerMsg').textContent = `Player ${state.winner} wins!`;
+          clearInterval(refreshInterval);
+        }
+      } catch (err){
+        console.error(err);
+      }
+    }
+
+    async function onFireClick(r,c){
+      try{
+        const res = await api('/api/fire', 'POST', {row:r, col:c});
+        if(res.error){
+          lastResult.textContent = res.error;
+        } else {
+          lastResult.textContent = res.result + (res.winner ? ` — Player ${res.winner} wins!` : '');
+          await refreshState();
+        }
+      }catch(e){ lastResult.textContent = 'Network error'; }
+    }
+
+    startBtn.addEventListener('click', async () => {
+      startMsg.textContent = 'Starting...';
+      const res = await api('/api/start', 'POST', {});
+      if(res && res === true || res && res.ok){
+        startView.classList.add('hidden');
+        endView.classList.add('hidden');
+        gameView.classList.remove('hidden');
+        await refreshState();
+        refreshInterval = setInterval(refreshState, 2000);
+      } else {
+        startMsg.textContent = 'Failed to start';
+      }
+    });
+
+    backToStart.addEventListener('click', () => {
+      location.reload();
+    });
+    playAgain.addEventListener('click', () => location.reload());
+  </script>
+</body>
+</html>
