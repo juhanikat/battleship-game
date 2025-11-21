@@ -3,7 +3,7 @@ import traceback
 import xmlrpc.client
 from xmlrpc.client import ServerProxy
 
-from flask import Flask, jsonify, make_response, request, send_file
+from flask import Flask, Response, jsonify, make_response, request, send_file
 
 
 class TimeoutTransport(xmlrpc.client.Transport):
@@ -16,6 +16,13 @@ class TimeoutTransport(xmlrpc.client.Transport):
         if hasattr(conn, 'timeout'):
             conn.timeout = self.timeout
         return conn
+
+
+def handle_error(error, message: str, error_code: int = 500) -> Response:
+    """Prints information about an error and return a json Response."""
+    print(message, error)
+    print(traceback.format_exc())
+    return jsonify({'error': f"{message}: {error}"}), error_code
 
 
 def _new_proxy(timeout=5):
@@ -32,6 +39,7 @@ def index():
 
 @app.route('/api/join', methods=['POST'])
 def api_join():
+    """Called once the user presses the Join Game button."""
     try:
         proxy = _new_proxy()
         res = proxy.register_player()
@@ -39,50 +47,44 @@ def api_join():
             response = make_response(jsonify(res))
             response.set_cookie("player_id", str(res))
             return response
-        else:
-            return jsonify({'error': + res}), 500
-    except Exception as e:
-        print("RPC start error:", e)
-        print(traceback.format_exc())
-        return jsonify({'error': 'rpc error: ' + str(e)}), 500
+        return handle_error(res, "Error in /api/join", 400)
+    except Exception as error:
+        return handle_error(error, "Error in /api/join")
 
 
 @app.route('/api/start', methods=['POST'])
 def api_start():
+    """Called once the user presses the Srart New Game button."""
     try:
         proxy = _new_proxy()
         res = proxy.start_game()
-    except Exception as e:
-        print("RPC start error:", e)
-        print(traceback.format_exc())
-        return jsonify({'error': 'rpc error: ' + str(e)}), 500
+    except Exception as error:
+        return handle_error(error, "Error in /api/start")
     return jsonify(res)
 
 
 @app.route('/api/fire', methods=['POST'])
 def api_fire():
+    """Called when the user clicks a coordinate on their opponent's grid."""
     data = request.get_json(force=True)
     row = data.get('row')
     col = data.get('col')
     try:
         proxy = _new_proxy()
         res = proxy.fire(int(request.cookies.get("player_id")), row, col)
-    except Exception as e:
-        print("RPC fire error:", e)
-        print(traceback.format_exc())
-        return jsonify({'error': 'rpc error: ' + str(e)}), 500
+    except Exception as error:
+        return handle_error(error, "Error in /api/fire")
     return jsonify(res)
 
 
 @app.route('/api/state', methods=['GET'])
 def api_state():
+    """Called automatically every 2 seconds once the game has started."""
     try:
         proxy = _new_proxy()
         res = proxy.get_state()
-    except Exception as e:
-        print("RPC state error:", e)
-        print(traceback.format_exc())
-        return jsonify({'error': 'rpc error: ' + str(e)}), 500
+    except Exception as error:
+        return handle_error(error, "Error in /api/state")
     return jsonify(res)
 
 
