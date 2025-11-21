@@ -9,6 +9,8 @@ class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
 
 class BattleshipGame:
     def __init__(self):
+        self.p1_registered = False
+        self.p2_registered = False
         self.grid_size = 5
         self.ship_sizes = [3, 2]
         self.reset()
@@ -54,6 +56,16 @@ class BattleshipGame:
                     pass
         return True
 
+    def register_player(self):
+        if not self.p1_registered:
+            self.p1_registered = True
+            return 1
+        elif not self.p2_registered:
+            self.p2_registered = True
+            return 2
+        else:
+            return "Both players have already been registered."
+
     def start_game(self):
         self.reset()
         self._auto_place_for(self.p1_grid)
@@ -66,7 +78,9 @@ class BattleshipGame:
                 return False
         return True
 
-    def fire(self, row, col):
+    def fire(self, player_id: int, row, col):
+        if self.current_player != player_id:
+            return {"error": f"It is currently player {self.current_player}'s turn."}
         if self.winner is not None:
             return {"error": "game over", "winner": self.winner}
 
@@ -79,7 +93,7 @@ class BattleshipGame:
         if not (0 <= row < self.grid_size and 0 <= col < self.grid_size):
             return {"error": "out of bounds"}
 
-        if self.current_player == 1:
+        if player_id == 1:
             opponent_grid = self.p2_grid
             tracking = self.p1_tracking
         else:
@@ -99,10 +113,10 @@ class BattleshipGame:
             result = "miss"
 
         if self._all_ships_sunk(opponent_grid):
-            self.winner = self.current_player
+            self.winner = player_id
             return {"result": result, "winner": self.winner, "next_player": None}
 
-        self.current_player = 2 if self.current_player == 1 else 1
+        self.current_player = 1 if self.current_player == 2 else 2
         return {"result": result, "winner": None, "next_player": self.current_player}
 
     def get_state(self):

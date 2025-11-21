@@ -3,7 +3,7 @@ import traceback
 import xmlrpc.client
 from xmlrpc.client import ServerProxy
 
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, make_response, request, send_file
 
 
 class TimeoutTransport(xmlrpc.client.Transport):
@@ -30,6 +30,23 @@ def index():
     return send_file(os.path.join(os.path.dirname(__file__), 'index.html'))
 
 
+@app.route('/api/join', methods=['POST'])
+def api_join():
+    try:
+        proxy = _new_proxy()
+        res = proxy.register_player()
+        if res == 1 or res == 2:
+            response = make_response(jsonify(res))
+            response.set_cookie("player_id", str(res))
+            return response
+        else:
+            return jsonify({'error': + res}), 500
+    except Exception as e:
+        print("RPC start error:", e)
+        print(traceback.format_exc())
+        return jsonify({'error': 'rpc error: ' + str(e)}), 500
+
+
 @app.route('/api/start', methods=['POST'])
 def api_start():
     try:
@@ -49,7 +66,7 @@ def api_fire():
     col = data.get('col')
     try:
         proxy = _new_proxy()
-        res = proxy.fire(row, col)
+        res = proxy.fire(int(request.cookies.get("player_id")), row, col)
     except Exception as e:
         print("RPC fire error:", e)
         print(traceback.format_exc())
