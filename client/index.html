@@ -1,28 +1,68 @@
 <!doctype html>
 <html>
+
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>Battleship client</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 16px; }
-    .hidden { display: none; }
-    table { border-collapse: collapse; margin: 8px 0; }
-    td { width: 28px; height: 28px; text-align: center; border: 1px solid #666; cursor: pointer; }
-    .sea { background: #cfefff; }
-    .ship { background: #999; color: #fff; }
-    .hit { background: #f33; color: #fff; }
-    .miss { background: #ddd; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 16px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 8px 0;
+    }
+
+    td {
+      width: 28px;
+      height: 28px;
+      text-align: center;
+      border: 1px solid #666;
+      cursor: pointer;
+    }
+
+    .sea {
+      background: #cfefff;
+    }
+
+    .ship {
+      background: #999;
+      color: #fff;
+    }
+
+    .hit {
+      background: #f33;
+      color: #fff;
+    }
+
+    .miss {
+      background: #ddd;
+    }
   </style>
 </head>
+
 <body>
-  <div id="startView">
+  <div id="joinView">
+    <h1>Battleship</h1>
+    <button id="joinBtn">Join Game</button>
+    <p id="joinMsg"></p>
+
+  </div>
+  <div id="startView" class="hidden">
     <h1>Battleship</h1>
     <button id="startBtn">Start New Game</button>
     <p id="startMsg"></p>
   </div>
 
   <div id="gameView" class="hidden">
-    <h2 id="status">Player X's turn</h2>
+    <h2 id="player">You are player X</h2>
+    <h2 id="status">It is player Y's turn</h2>
     <div style="display:flex; gap:32px;">
       <div>
         <h3>Your grid</h3>
@@ -43,18 +83,21 @@
   </div>
 
   <script>
-    async function api(path, method='GET', body=null){
-      const opts = { method, headers: {'Content-Type':'application/json'} };
-      if(body) opts.body = JSON.stringify(body);
+    async function api(path, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
       const res = await fetch(path, opts);
       return res.json();
     }
 
+    const joinBtn = document.getElementById('joinBtn');
+    const joinMsg = document.getElementById('joinMsg');
     const startBtn = document.getElementById('startBtn');
     const startMsg = document.getElementById('startMsg');
     const gameView = document.getElementById('gameView');
     const startView = document.getElementById('startView');
     const endView = document.getElementById('endView');
+    const playerEl = document.getElementById('player');
     const statusEl = document.getElementById('status');
     const oppGridEl = document.getElementById('oppGrid');
     const ownGridEl = document.getElementById('ownGrid');
@@ -64,7 +107,7 @@
     let state = null;
     let refreshInterval = null;
 
-    function renderGrid(container, grid, clickable=false, onClickCell=null, hideShips=false){
+    function renderGrid(container, grid, clickable = false, onClickCell = null, hideShips = false) {
       container.innerHTML = '';
       const table = document.createElement('table');
       grid.forEach((row, r) => {
@@ -73,16 +116,16 @@
           const td = document.createElement('td');
           td.className = 'sea';
           let display = cell;
-          if(cell === '~') display = '';
-          if(cell === 'S') {
-            if(hideShips) { display = ''; td.className = 'sea'; }
+          if (cell === '~') display = '';
+          if (cell === 'S') {
+            if (hideShips) { display = ''; td.className = 'sea'; }
             else { td.className = 'ship'; display = 'S'; }
           }
-          if(cell === 'X') { td.className = 'hit'; display = 'X'; }
-          if(cell === 'O') { td.className = 'miss'; display = 'O'; }
+          if (cell === 'X') { td.className = 'hit'; display = 'X'; }
+          if (cell === 'O') { td.className = 'miss'; display = 'O'; }
 
           td.textContent = display;
-          if(clickable){
+          if (clickable) {
             td.addEventListener('click', () => onClickCell && onClickCell(r, c));
           } else {
             td.style.cursor = 'default';
@@ -94,17 +137,23 @@
       container.appendChild(table);
     }
 
-    async function refreshState(){
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    async function refreshState() {
       try {
         const json = await api('/api/state');
         state = json;
-        if(state.error){ startMsg.textContent = state.error; return; }
-        const me = state.current_player;
+        if (state.error) { startMsg.textContent = state.error; return; }
+        const me = Number(getCookie("player_id"));
+        playerEl.textContent = `Player ${me}`;
         statusEl.textContent = state.winner ? 'Game over' : `Player ${state.current_player}'s turn`;
         lastResult.textContent = '';
-        const perspective = state.current_player || 1;
         let ownGrid, oppTracking;
-        if(perspective === 1){
+        if (me === 1) {
           ownGrid = state.p1_grid;
           oppTracking = state.p1_tracking;
         } else {
@@ -114,34 +163,45 @@
         renderGrid(ownGridEl, ownGrid, false, null, false);
         renderGrid(oppGridEl, oppTracking, state.winner ? false : true, onFireClick, true);
 
-        if(state.winner){
+        if (state.winner) {
           startView.classList.add('hidden');
           gameView.classList.add('hidden');
           endView.classList.remove('hidden');
           document.getElementById('winnerMsg').textContent = `Player ${state.winner} wins!`;
           clearInterval(refreshInterval);
         }
-      } catch (err){
+      } catch (err) {
         console.error(err);
       }
     }
 
-    async function onFireClick(r,c){
-      try{
-        const res = await api('/api/fire', 'POST', {row:r, col:c});
-        if(res.error){
+    async function onFireClick(r, c) {
+      try {
+        const res = await api('/api/fire', 'POST', { row: r, col: c });
+        if (res.error) {
           lastResult.textContent = res.error;
         } else {
           lastResult.textContent = res.result + (res.winner ? ` — Player ${res.winner} wins!` : '');
           await refreshState();
         }
-      }catch(e){ lastResult.textContent = 'Network error'; }
+      } catch (e) { lastResult.textContent = 'Network error'; }
     }
+
+    joinBtn.addEventListener('click', async () => {
+      joinBtn.textContent = 'Joining...';
+      const res = await api('/api/join', 'POST', {});
+      if (res) {
+        joinView.classList.add('hidden');
+        startView.classList.remove('hidden');
+      } else {
+        joinMsg.textContent = 'Failed to join game';
+      }
+    });
 
     startBtn.addEventListener('click', async () => {
       startMsg.textContent = 'Starting...';
       const res = await api('/api/start', 'POST', {});
-      if(res && res === true || res && res.ok){
+      if (res && res === true || res && res.ok) {
         startView.classList.add('hidden');
         endView.classList.add('hidden');
         gameView.classList.remove('hidden');
@@ -158,4 +218,5 @@
     playAgain.addEventListener('click', () => location.reload());
   </script>
 </body>
+
 </html>

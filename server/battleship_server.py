@@ -1,12 +1,16 @@
-from xmlrpc.server import SimpleXMLRPCServer
-from socketserver import ThreadingMixIn
 import random
+from socketserver import ThreadingMixIn
+from xmlrpc.server import SimpleXMLRPCServer
+
 
 class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     pass
 
+
 class BattleshipGame:
     def __init__(self):
+        self.p1_registered = False
+        self.p2_registered = False
         self.grid_size = 5
         self.ship_sizes = [3, 2]
         self.reset()
@@ -48,8 +52,19 @@ class BattleshipGame:
                     placed = True
                 attempts += 1
             if not placed:
-                for _ in range(10): pass
+                for _ in range(10):
+                    pass
         return True
+
+    def register_player(self):
+        if not self.p1_registered:
+            self.p1_registered = True
+            return 1
+        elif not self.p2_registered:
+            self.p2_registered = True
+            return 2
+        else:
+            return "Both players have already been registered."
 
     def start_game(self):
         self.reset()
@@ -63,19 +78,22 @@ class BattleshipGame:
                 return False
         return True
 
-    def fire(self, row, col):
+    def fire(self, player_id: int, row, col):
+        if self.current_player != player_id:
+            return {"error": f"It is currently player {self.current_player}'s turn."}
         if self.winner is not None:
             return {"error": "game over", "winner": self.winner}
 
         try:
-            row = int(row); col = int(col)
+            row = int(row)
+            col = int(col)
         except:
             return {"error": "invalid coordinates"}
 
         if not (0 <= row < self.grid_size and 0 <= col < self.grid_size):
             return {"error": "out of bounds"}
 
-        if self.current_player == 1:
+        if player_id == 1:
             opponent_grid = self.p2_grid
             tracking = self.p1_tracking
         else:
@@ -95,10 +113,10 @@ class BattleshipGame:
             result = "miss"
 
         if self._all_ships_sunk(opponent_grid):
-            self.winner = self.current_player
+            self.winner = player_id
             return {"result": result, "winner": self.winner, "next_player": None}
 
-        self.current_player = 2 if self.current_player == 1 else 1
+        self.current_player = 1 if self.current_player == 2 else 2
         return {"result": result, "winner": None, "next_player": self.current_player}
 
     def get_state(self):
@@ -112,6 +130,7 @@ class BattleshipGame:
             "grid_size": self.grid_size,
             "ship_sizes": self.ship_sizes,
         }
+
 
 server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
 server.allow_reuse_address = True
