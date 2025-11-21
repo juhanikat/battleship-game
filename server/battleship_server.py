@@ -1,9 +1,11 @@
-from xmlrpc.server import SimpleXMLRPCServer
-from socketserver import ThreadingMixIn
 import random
+from socketserver import ThreadingMixIn
+from xmlrpc.server import SimpleXMLRPCServer
+
 
 class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     pass
+
 
 class BattleshipGame:
     def __init__(self):
@@ -48,7 +50,8 @@ class BattleshipGame:
                     placed = True
                 attempts += 1
             if not placed:
-                for _ in range(10): pass
+                for _ in range(10):
+                    pass
         return True
 
     def start_game(self):
@@ -68,7 +71,8 @@ class BattleshipGame:
             return {"error": "game over", "winner": self.winner}
 
         try:
-            row = int(row); col = int(col)
+            row = int(row)
+            col = int(col)
         except:
             return {"error": "invalid coordinates"}
 
@@ -112,6 +116,7 @@ class BattleshipGame:
             "grid_size": self.grid_size,
             "ship_sizes": self.ship_sizes,
         }
+
 
 server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
 server.allow_reuse_address = True
