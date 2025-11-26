@@ -1,7 +1,7 @@
 import socket
 
-HOST = ""  # The server's hostname or IP address
-PORT = 62435  # The port used by the server
+HOST = "https://later-tongue-dealers-wan.trycloudflare.com"  # The server's hostname or IP address
+PORT = 8000  # The port used by the server
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
