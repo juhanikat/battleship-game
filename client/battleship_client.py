@@ -3,10 +3,14 @@ import traceback
 import xmlrpc.client
 from xmlrpc.client import ServerProxy
 
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
+
 load_dotenv(find_dotenv() or None)
 
 from flask import Flask, Response, jsonify, make_response, request, send_file
+
+load_dotenv()
+MAIN_SERVER_CLOUDFLARED_ADDRESS = os.getenv("MAIN_SERVER_CLOUDFLARED_ADDRESS")
 
 
 class TimeoutTransport(xmlrpc.client.Transport):

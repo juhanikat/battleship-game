@@ -1,7 +1,8 @@
 from socketserver import ThreadingMixIn
-from xmlrpc.server import SimpleXMLRPCServer
-from battleship_game import BattleshipGame
 from uuid import uuid4
+from xmlrpc.server import SimpleXMLRPCServer
+
+from battleship_game import BattleshipGame
 
 
 class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -40,7 +41,8 @@ class GameServer():
     def ping(self):
         return "pong"
 
-server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
+server = ThreadedXMLRPCServer(
+    ("localhost", 8000), allow_none=True, logRequests=True)
 server.allow_reuse_address = True
 server.register_instance(GameServer())
 print("Battleship XML-RPC server running on port 8000...")

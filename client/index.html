@@ -54,6 +54,11 @@
     </div>
     <button id="joinBtn">Join Game</button>
     <p id="joinMsg"></p>
+    <h2>All Known Servers</h2>
+    <ul>
+
+    </ul>
+    >
 
   </div>
   <div id="startView" class="hidden">
@@ -265,6 +270,8 @@
       location.reload();
     });
     playAgain.addEventListener('click', () => location.reload());
+
+    refreshServers()
   </script>
 </body>
 
