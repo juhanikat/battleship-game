@@ -43,9 +43,11 @@ def api_join():
     try:
         proxy = _new_proxy()
         res = proxy.register_player()
-        if res == 1 or res == 2:
+        print(res)
+        if res[0] == 1 or res[0] == 2:
             response = make_response(jsonify(res))
-            response.set_cookie("player_id", str(res))
+            response.set_cookie("player_id", str(res[0]))
+            response.set_cookie("game_id", str(res[1]))
             return response
         return handle_error(res, "Error in /api/join", 400)
     except Exception as error:
@@ -57,7 +59,8 @@ def api_start():
     """Called once the user presses the Srart New Game button."""
     try:
         proxy = _new_proxy()
-        res = proxy.start_game()
+        # server exposes `new_game`; call that RPC
+        res = proxy.new_game()
     except Exception as error:
         return handle_error(error, "Error in /api/start")
     return jsonify(res)
@@ -71,7 +74,9 @@ def api_fire():
     col = data.get('col')
     try:
         proxy = _new_proxy()
-        res = proxy.fire(int(request.cookies.get("player_id")), row, col)
+        game_id = request.cookies.get("game_id")
+        player_id = int(request.cookies.get("player_id")) if request.cookies.get("player_id") else None
+        res = proxy.fire(game_id, player_id, row, col)
     except Exception as error:
         return handle_error(error, "Error in /api/fire")
     return jsonify(res)
@@ -82,7 +87,8 @@ def api_state():
     """Called automatically every 2 seconds once the game has started."""
     try:
         proxy = _new_proxy()
-        res = proxy.get_state()
+        game_id = request.cookies.get("game_id")
+        res = proxy.get_state(game_id)
     except Exception as error:
         return handle_error(error, "Error in /api/state")
     return jsonify(res)
