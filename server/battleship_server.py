@@ -37,6 +37,8 @@ class GameServer():
     def fire(self, game_id, player_id: int, row, col):
         return self.games[game_id].fire(player_id, row, col)
 
+    def ping(self):
+        return "pong"
 
 server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
 server.allow_reuse_address = True

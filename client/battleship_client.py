@@ -3,6 +3,9 @@ import traceback
 import xmlrpc.client
 from xmlrpc.client import ServerProxy
 
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv() or None)
+
 from flask import Flask, Response, jsonify, make_response, request, send_file
 
 
@@ -26,7 +29,7 @@ def handle_error(error, message: str, error_code: int = 500) -> Response:
 
 
 def _new_proxy(timeout=5):
-    return ServerProxy("http://localhost:8000", allow_none=True, transport=TimeoutTransport(timeout=timeout))
+    return ServerProxy(request.cookies.get("server_url"), allow_none=True, transport=TimeoutTransport(timeout=timeout))
 
 
 app = Flask(__name__, static_folder=None)
@@ -93,6 +96,43 @@ def api_state():
         return handle_error(error, "Error in /api/state")
     return jsonify(res)
 
+def _proxy_for(server_url: str, timeout=2):
+    """Create a ServerProxy for a given server URL (adds http:// if missing)."""
+    if not server_url:
+        raise ValueError("server_url required")
+    s = server_url.strip()
+    if not s.startswith("http://") and not s.startswith("https://"):
+        s = "http://" + s
+    return ServerProxy(s, allow_none=True, transport=TimeoutTransport(timeout=timeout))
+
+@app.route('/api/ping_all', methods=['GET'])
+def api_ping_all():
+    """Ping every server from SERVERLIST and return success/error for each."""
+    try:
+        servers_env = os.getenv("SERVERLIST", "http://localhost:8000")
+        servers = [s.strip() for s in servers_env.split(",") if s.strip()]
+        results = []
+        for s in servers:
+            try:
+                proxy = _proxy_for(s, timeout=2)
+                # call a lightweight RPC (ping). If you want full state, call get_state()
+                pong = proxy.ping()
+                results.append({"server": s, "ok": True, "pong": pong})
+            except Exception as e:
+                results.append({"server": s, "ok": False, "error": str(e)})
+        return jsonify(results)
+    except Exception as e:
+        return handle_error(e, "Error in /api/ping_all")
+
+@app.route('/api/config', methods=['GET'])
+def api_config():
+    """Returns server configuration such as available servers."""
+    try:
+        servers = (os.getenv("SERVERLIST")).split(",")
+        default = servers[0] if servers else "http://localhost:8000"
+        return jsonify({"servers": servers, "default": default})
+    except Exception as e:
+        return handle_error(e, "Error in /api/config")
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True, threaded=True)
