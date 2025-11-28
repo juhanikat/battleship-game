@@ -49,7 +49,9 @@
 
 <body>
   <div id="joinView">
-    <h1>Battleship</h1>
+    <div id="serverSelect" class="server-select">
+      <h1>Battleship</h1>
+    </div>
     <button id="joinBtn">Join Game</button>
     <p id="joinMsg"></p>
 
@@ -143,6 +145,10 @@
       if (parts.length === 2) return parts.pop().split(';').shift();
     }
 
+    function setCookie(name, value) {
+      document.cookie = `${name}=${value}; path=/`;
+    }
+
     async function refreshState() {
       try {
         const json = await api('/api/state');
@@ -187,8 +193,51 @@
       } catch (e) { lastResult.textContent = 'Network error'; }
     }
 
+    async function loadServers() {
+      try {
+        // get configured servers
+        const cfg = await fetch('/api/config').then(r => r.json());
+        if (cfg.error) { console.warn(cfg); return; }
+        const servers = cfg.servers || [];
+
+        // ping all servers (fast timeout on server-side)
+        const pingRes = await fetch('/api/ping_all').then(r => r.json());
+        const statusByServer = {};
+        if (Array.isArray(pingRes)) {
+          pingRes.forEach(p => { statusByServer[p.server] = p; });
+        }
+
+        // build select UI inside #serverSelect
+        const container = document.getElementById('serverSelect');
+        const sel = document.createElement('select');
+        sel.id = 'server';
+        sel.style.minWidth = '320px';
+        servers.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s;
+          const st = statusByServer[s];
+          const label = st ? (st.ok ? `${s} — OK` : `${s} — DOWN`) : s;
+          opt.textContent = label;
+          sel.appendChild(opt);
+        });
+        if (cfg.default) sel.value = cfg.default;
+        container.appendChild(sel);
+
+        // small status summary
+        const summary = document.createElement('div');
+        summary.style.marginTop = '8px';
+        summary.textContent = `Checked ${servers.length} server(s).`;
+        container.appendChild(summary);
+
+      } catch (err) {
+        console.warn('loadServers error', err);
+      }
+    }
+    loadServers();
+
     joinBtn.addEventListener('click', async () => {
       joinBtn.textContent = 'Joining...';
+      setCookie('server_url', document.getElementById('server').value);
       const res = await api('/api/join', 'POST', {});
       if (res) {
         joinView.classList.add('hidden');
