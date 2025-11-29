@@ -85,7 +85,7 @@ def get_player_stats(player_id: int) -> Stats | None:
     return None
 
 
-def create_database_entry(player_name: str) -> None:
+def create_database_entry(player_name: str) -> int:
     """Adds a new player into the statistics table, and returns their ID. Creating a player with an existing name results in an error!"""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
