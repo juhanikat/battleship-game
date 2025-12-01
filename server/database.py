@@ -20,7 +20,7 @@ def database_entry_to_stats(result: tuple) -> Stats:
     return stats
 
 
-def init_database(insert_test_data: bool = False):
+def init_database(insert_test_data: bool = False) -> None:
     """Called when a game server starts to create the database and the statistics table."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
@@ -38,7 +38,7 @@ def init_database(insert_test_data: bool = False):
     con.close()
 
 
-def scores_exist():
+def scores_exist() -> bool:
     """Returns True if the statistics table exists (init_database() has been called), or False otherwise."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
@@ -85,12 +85,18 @@ def get_player_stats(player_id: int) -> Stats | None:
     return None
 
 
-def create_database_entry(player_name: str) -> int:
-    """Adds a new player into the statistics table, and returns their ID. Creating a player with an existing name results in an error!"""
+def create_database_entry(player_name: str) -> int | bool:
+    """Adds a new player into the statistics table, and returns their ID. If a player with that name already exists, returns False."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
-    cur.execute("INSERT INTO statistics(player_name, games_won, games_lost) VALUES(?, 0, 0)", [
-                player_name])
+
+    try:
+        cur.execute("INSERT INTO statistics(player_name, games_won, games_lost) VALUES(?, 0, 0)", [
+                    player_name])
+    except sqlite3.IntegrityError:
+        con.close()
+        return False
+
     cur.execute("SELECT player_id FROM statistics WHERE player_name = ?", [
                 player_name])
     result = cur.fetchone()

@@ -18,6 +18,7 @@ class GameServer():
         if not DB.scores_exist():
             DB.init_database(insert_test_data=True)
         print(DB.create_database_entry("kolmas"))
+        DB.create_database_entry("kolmas")
         print(DB.get_all_stats())
         print(DB.get_player_stats(1))
         print(DB.get_player_stats(2))
