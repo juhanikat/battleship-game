@@ -52,6 +52,12 @@
     <div id="serverSelect" class="server-select">
       <h1>Battleship</h1>
     </div>
+    <br>
+    <div>
+      <label for="player_name">Optionally, enter a name to save your statistics</label>
+      <input type="text" id="playerNameInput" name="player_name" minlength="3" maxlength="20"></input>
+    </div>
+    <br>
     <button id="joinBtn">Join Game</button>
     <p id="joinMsg"></p>
 
@@ -93,6 +99,7 @@
     }
 
     const joinBtn = document.getElementById('joinBtn');
+    const playerNameInput = document.getElementById('playerNameInput');
     const joinMsg = document.getElementById('joinMsg');
     const startBtn = document.getElementById('startBtn');
     const startMsg = document.getElementById('startMsg');
@@ -238,7 +245,7 @@
     joinBtn.addEventListener('click', async () => {
       joinBtn.textContent = 'Joining...';
       setCookie('server_url', document.getElementById('server').value);
-      const res = await api('/api/join', 'POST', {});
+      const res = await api('/api/join', 'POST', { "playerName": playerNameInput.value });
       if (res) {
         joinView.classList.add('hidden');
         startView.classList.remove('hidden');
