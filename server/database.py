@@ -70,12 +70,12 @@ def get_all_stats() -> list[Stats] | None:
     return None
 
 
-def get_player_stats(player_id: int) -> Stats | None:
+def get_player_stats(player_name: str) -> Stats | None:
     """Returns the Stats dict of a player if found, or None otherwise."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
     cur.execute(
-        "SELECT player_id, player_name, games_won, games_lost FROM statistics WHERE player_id = ?", [(player_id)])
+        "SELECT player_id, player_name, games_won, games_lost FROM statistics WHERE player_name = ?", [(player_name)])
     result = cur.fetchone()
     con.commit()
     con.close()
@@ -106,15 +106,17 @@ def create_database_entry(player_name: str) -> int | bool:
     return result[0]
 
 
-def record_game_results(player_id: int, won: bool) -> None:
-    """Increases either games_won or games_lost."""
+def record_game_results(player_name: str, won: bool) -> None:
+    """Increases either games_won or games_lost for the player with player_name."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
     if won:
         cur.execute(
-            "UPDATE statistics SET games_won = games_won + 1 WHERE player_id = ?", [(player_id)])
+            "UPDATE statistics SET games_won = games_won + 1 WHERE player_name = ?", [(player_name)])
+        print(f"Increased {player_name}'s won games amount by 1")
     else:
         cur.execute(
-            "UPDATE statistics SET games_lost = games_lost + 1 WHERE player_id = ?", [(player_id)])
+            "UPDATE statistics SET games_lost = games_lost + 1 WHERE player_name = ?", [(player_name)])
+        print(f"Increased {player_name}'s lost games amount by 1")
     con.commit()
     con.close()

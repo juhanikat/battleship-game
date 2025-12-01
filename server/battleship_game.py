@@ -1,5 +1,6 @@
 import random
 
+
 class BattleshipGame:
     def __init__(self):
         self.grid_size = 5

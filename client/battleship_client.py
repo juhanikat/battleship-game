@@ -3,10 +3,10 @@ import traceback
 import xmlrpc.client
 from xmlrpc.client import ServerProxy
 
-from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv() or None)
-
+from dotenv import find_dotenv, load_dotenv
 from flask import Flask, Response, jsonify, make_response, request, send_file
+
+load_dotenv(find_dotenv() or None)
 
 
 class TimeoutTransport(xmlrpc.client.Transport):
@@ -43,9 +43,10 @@ def index():
 @app.route('/api/join', methods=['POST'])
 def api_join():
     """Called once the user presses the Join Game button."""
+    player_name = request.json["playerName"].strip()
     try:
         proxy = _new_proxy()
-        res = proxy.register_player()
+        res = proxy.register_player(player_name)
         print(res)
         if res[0] == 1 or res[0] == 2:
             response = make_response(jsonify(res))
@@ -78,7 +79,8 @@ def api_fire():
     try:
         proxy = _new_proxy()
         game_id = request.cookies.get("game_id")
-        player_id = int(request.cookies.get("player_id")) if request.cookies.get("player_id") else None
+        player_id = int(request.cookies.get("player_id")
+                        ) if request.cookies.get("player_id") else None
         res = proxy.fire(game_id, player_id, row, col)
     except Exception as error:
         return handle_error(error, "Error in /api/fire")
@@ -96,6 +98,7 @@ def api_state():
         return handle_error(error, "Error in /api/state")
     return jsonify(res)
 
+
 def _proxy_for(server_url: str, timeout=2):
     """Create a ServerProxy for a given server URL (adds http:// if missing)."""
     if not server_url:
@@ -104,6 +107,7 @@ def _proxy_for(server_url: str, timeout=2):
     if not s.startswith("http://") and not s.startswith("https://"):
         s = "http://" + s
     return ServerProxy(s, allow_none=True, transport=TimeoutTransport(timeout=timeout))
+
 
 @app.route('/api/ping_all', methods=['GET'])
 def api_ping_all():
@@ -124,6 +128,7 @@ def api_ping_all():
     except Exception as e:
         return handle_error(e, "Error in /api/ping_all")
 
+
 @app.route('/api/config', methods=['GET'])
 def api_config():
     """Returns server configuration such as available servers."""
@@ -133,6 +138,7 @@ def api_config():
         return jsonify({"servers": servers, "default": default})
     except Exception as e:
         return handle_error(e, "Error in /api/config")
+
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True, threaded=True)
