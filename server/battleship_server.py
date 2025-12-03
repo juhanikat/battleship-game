@@ -64,6 +64,10 @@ class GameServer():
                 winning_player_name, losing_player_name)
 
         return result
+    
+    def quit(self, game_id, player_id: int):
+        result = self.games[game_id].cancel_game(player_id)
+        return result
 
     def record_statistics(self, winning_player_name: str, losing_player_name: str) -> None:
         """Checks if players exist in the database and creates an entry for them if needed, then increases games_lost or games_won."""

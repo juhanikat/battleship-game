@@ -163,6 +163,7 @@
         const json = await api('/api/state');
         state = json;
         if (state.error) { startMsg.textContent = state.error; return; }
+        if (state.game_canceled) { statusEl.textContent = `Your opponent has left the game. Please refresh the page to join a new one.`; return; }
         const me = Number(getCookie("player_id"));
         playerEl.textContent = `Player ${me}`;
         statusEl.textContent = state.winner ? 'Game over' : `Player ${state.current_player}'s turn`;
@@ -277,8 +278,14 @@
       }
     });
 
-    backToStart.addEventListener('click', () => {
-      location.reload();
+    backToStart.addEventListener('click', async () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+      gameView.classList.add('hidden');
+      joinView.classList.remove('hidden');
+      const res = await api('/api/quit', 'POST', {})
+      if (res) {
+        location.reload()
+      }
     });
     playAgain.addEventListener('click', () => location.reload());
   </script>
