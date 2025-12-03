@@ -1,5 +1,5 @@
 .venv
-.env
+server/.env
 __pycache__
 
 statistics_database.db
