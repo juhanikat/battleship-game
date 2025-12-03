@@ -102,9 +102,10 @@ class BattleshipGame:
         self.current_player = 1 if self.current_player == 2 else 2
         return {"result": result, "winner": None, "next_player": self.current_player}
 
-    def cancel_game(self):
+    def cancel_game(self, player_id: int):
         """Called when a player leaves the game."""
         self.game_canceled = True
+        return f"Player {player_id} has left the game."
 
     def get_state(self):
         return {

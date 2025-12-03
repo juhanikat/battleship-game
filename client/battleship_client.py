@@ -140,17 +140,20 @@ def api_config():
         return handle_error(e, "Error in /api/config")
 
 
-@app.route('/api/reset', methods=['POST'])
-def api_reset():
-    """Resets cookies and sends player back to server select screen."""
+@app.route('/api/quit', methods=['POST'])
+def api_quit():
+    """Resets cookies and sends player back to server select screen. 
+    Once one player quits the game, the other will be shown a message that tells them to refresh the page to join a new game."""
     try:
+        game_id = request.cookies.get("game_id")
+        player_id = request.cookies.get("player_id")
         proxy = _new_proxy()
-        res = proxy.reset()  # implement this
+        res = proxy.quit(game_id, player_id) 
         response = make_response(jsonify(res))
         response.set_cookie("player_id", "", expires=0)
         response.set_cookie("game_id", "", expires=0)
     except Exception as e:
-        return handle_error(e, "Error in /api/reset")
+        return handle_error(e, "Error in /api/quit")
     return response
 
 
