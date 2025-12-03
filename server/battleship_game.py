@@ -14,6 +14,7 @@ class BattleshipGame:
         self.p2_tracking = self.create_grid()
         self.current_player = 1
         self.winner = None
+        self.game_canceled = False
 
     def create_grid(self):
         return [["~" for _ in range(self.grid_size)] for _ in range(self.grid_size)]
@@ -101,6 +102,10 @@ class BattleshipGame:
         self.current_player = 1 if self.current_player == 2 else 2
         return {"result": result, "winner": None, "next_player": self.current_player}
 
+    def cancel_game(self):
+        """Called when a player leaves the game."""
+        self.game_canceled = True
+
     def get_state(self):
         return {
             "p1_grid": self.p1_grid,
@@ -109,6 +114,7 @@ class BattleshipGame:
             "p2_tracking": self.p2_tracking,
             "current_player": self.current_player,
             "winner": self.winner,
+            "game_canceled": self.game_canceled,
             "grid_size": self.grid_size,
             "ship_sizes": self.ship_sizes,
         }

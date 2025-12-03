@@ -268,8 +268,9 @@
       }
     });
 
-    backToStart.addEventListener('click', () => {
-      location.reload();
+    backToStart.addEventListener('click', async () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+      await api('/api/reset', 'POST', {})
     });
     playAgain.addEventListener('click', () => location.reload());
   </script>

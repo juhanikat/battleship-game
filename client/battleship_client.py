@@ -140,5 +140,19 @@ def api_config():
         return handle_error(e, "Error in /api/config")
 
 
+@app.route('/api/reset', methods=['POST'])
+def api_reset():
+    """Resets cookies and sends player back to server select screen."""
+    try:
+        proxy = _new_proxy()
+        res = proxy.reset()  # implement this
+        response = make_response(jsonify(res))
+        response.set_cookie("player_id", "", expires=0)
+        response.set_cookie("game_id", "", expires=0)
+    except Exception as e:
+        return handle_error(e, "Error in /api/reset")
+    return response
+
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True, threaded=True)
