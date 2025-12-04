@@ -76,6 +76,9 @@ class GameServer():
                 DB.create_database_entry(losing_player_name)
             DB.record_game_results(losing_player_name, won=False)
 
+    def get_statistics(self):
+        return DB.get_all_stats()
+
     def ping(self):
         return "pong"
 

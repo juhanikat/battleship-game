@@ -61,8 +61,14 @@
     <br>
     <button id="joinBtn">Join Game</button>
     <p id="joinMsg"></p>
-
+    <p>Click here to show the statistics table of the selected server.</p>
+    <button id="statisticsButton">Statistics</button>
+    <div id="statisticsTable">
+    </div>
   </div>
+
+
+
   <div id="startView" class="hidden">
     <h1>Battleship</h1>
     <button id="startBtn">Start New Game</button>
@@ -91,6 +97,8 @@
     <button id="playAgain">Play Again</button>
   </div>
 
+
+
   <script>
     async function api(path, method = 'GET', body = null) {
       const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -102,6 +110,7 @@
     const refreshServerListButton = document.getElementById('refreshServerListButton');
     const joinBtn = document.getElementById('joinBtn');
     const playerNameInput = document.getElementById('playerNameInput');
+    const statisticsButton = document.getElementById('statisticsButton');
     const joinMsg = document.getElementById('joinMsg');
     const startBtn = document.getElementById('startBtn');
     const startMsg = document.getElementById('startMsg');
@@ -262,6 +271,43 @@
         joinMsg.textContent = 'Failed to join game';
       }
     });
+
+    statisticsButton.addEventListener('click', async () => {
+      setCookie('server_url', document.getElementById('server').value);
+      const res = await api('/api/statistics', 'GET');
+      if (!res.error) {
+        const tableDiv = document.getElementById("statisticsTable")
+        tableDiv.innerHTML = "";
+
+        const titleTr = document.createElement("tr")
+        const titleTd1 = document.createElement("td")
+        const titleTd2 = document.createElement("td")
+        const titleTd3 = document.createElement("td")
+        titleTd1.innerHTML = "Name"
+        titleTd2.innerHTML = "Games Won"
+        titleTd3.innerHTML = "Games Lost"
+        titleTr.appendChild(titleTd1)
+        titleTr.appendChild(titleTd2)
+        titleTr.appendChild(titleTd3)
+        tableDiv.appendChild(titleTr)
+
+        res.forEach(item => {
+          const tr = document.createElement("tr")
+          const player_name_td = document.createElement("td")
+          player_name_td.innerHTML = item["player_name"]
+          const games_won_td = document.createElement("td")
+          games_won_td.innerHTML = item["games_won"]
+          const games_lost_td = document.createElement("td")
+          games_lost_td.innerHTML = item["games_lost"]
+          tr.appendChild(player_name_td)
+          tr.appendChild(games_won_td)
+          tr.appendChild(games_lost_td)
+          tableDiv.appendChild(tr)
+        })
+      } else {
+        console.log("failed to get statistics!")
+      }
+    })
 
     startBtn.addEventListener('click', async () => {
       startMsg.textContent = 'Starting...';

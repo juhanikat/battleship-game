@@ -138,6 +138,15 @@ def api_config():
         return jsonify({"servers": servers, "default": default})
     except Exception as e:
         return handle_error(e, "Error in /api/config")
+    
+@app.route('/api/statistics', methods=['GET'])
+def api_statistics():
+    try:
+        proxy = _new_proxy()
+        res = proxy.get_statistics()
+    except Exception as error:
+        return handle_error(error, "Error in /api/statistics")
+    return jsonify(res)
 
 
 if __name__ == '__main__':
