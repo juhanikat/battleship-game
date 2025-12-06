@@ -65,6 +65,7 @@
     <button id="statisticsButton">Statistics</button>
     <div id="statisticsTable">
     </div>
+    <p id="statisticsErrorMsg"></p>
   </div>
 
 
@@ -111,6 +112,7 @@
     const joinBtn = document.getElementById('joinBtn');
     const playerNameInput = document.getElementById('playerNameInput');
     const statisticsButton = document.getElementById('statisticsButton');
+    const statisticsErrorMsg = document.getElementById('statisticsErrorMsg');
     const joinMsg = document.getElementById('joinMsg');
     const startBtn = document.getElementById('startBtn');
     const startMsg = document.getElementById('startMsg');
@@ -174,7 +176,7 @@
         if (state.error) { startMsg.textContent = state.error; return; }
         const me = Number(getCookie("player_id"));
         playerEl.textContent = `Player ${me}`;
-        statusEl.textContent = state.winner ? 'Game over' : `Player ${state.current_player}'s turn`;
+        statusEl.textContent = state.winner ? 'Game over' : `${state.current_player == me ? 'Your' : 'Opponent\'s'} turn`;
         lastResult.textContent = '';
         let ownGrid, oppTracking;
         if (me === 1) {
@@ -276,6 +278,7 @@
       setCookie('server_url', document.getElementById('server').value);
       const res = await api('/api/statistics', 'GET');
       if (!res.error) {
+        statisticsErrorMsg.textContent = ""
         const tableDiv = document.getElementById("statisticsTable")
         tableDiv.innerHTML = "";
 
@@ -305,7 +308,7 @@
           tableDiv.appendChild(tr)
         })
       } else {
-        console.log("failed to get statistics!")
+        statisticsErrorMsg.textContent = "Failed to get statistics!"
       }
     })
 
