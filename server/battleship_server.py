@@ -1,3 +1,6 @@
+# pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
+# pylint: disable=line-too-long,missing-function-docstring,missing-class-docstring
+import threading
 from socketserver import ThreadingMixIn
 from uuid import uuid4
 import xmlrpc
@@ -6,7 +9,6 @@ from xmlrpc.client import ServerProxy
 import os
 import database as DB
 from battleship_game import BattleshipGame
-import threading
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv() or None)
@@ -50,12 +52,20 @@ class GameServer:
         # { https://server1.trycloudflare.com: "12", https://server2.trycloudflare.com: "3" }
         self.server_address_to_server_ba_number = {}
 
-        # updated after a bully algorithm run, the default value must be set to current main server address before running!
+        # updated after a bully algorithm run, the default value
+        # must be set to current main server address before running!
         self.main_server_address = os.getenv("MAIN_SERVER_ADDRESS")
         self.address = os.getenv("SERVER_ADDRESS")
         self.ba_number = os.getenv(
             "BA_NUMBER"
-        )  # number used for ID in the Bully Algorithm
+        )
+        self.server_address_to_server_ba_number[self.address] = self.ba_number
+
+        self.connection_created = False
+        self.election_underway = False
+
+        # fetch server dict from main server on startup
+        self._sync_server_dict_from_main()
 
         # polls main server every 10 seconds
         self.poll_main_server()
@@ -98,7 +108,7 @@ class GameServer:
             self.record_statistics(winning_player_name, losing_player_name)
 
         return result
-    
+
     def quit(self, game_id, player_id: int):
         result = self.games[game_id].cancel_game(player_id)
         return result
@@ -106,20 +116,67 @@ class GameServer:
     def record_statistics(
         self, winning_player_name: str, losing_player_name: str
     ) -> None:
-        """Checks if players exist in the database and creates an entry for them if needed, then increases games_lost or games_won."""
+        """Checks if players exist in the database and creates 
+        an entry for them if needed, then increases games_lost or games_won."""
         if len(winning_player_name) > 0:
-            if DB.get_player_stats(winning_player_name) == None:
+            if DB.get_player_stats(winning_player_name) is None:
                 DB.create_database_entry(winning_player_name)
             DB.record_game_results(winning_player_name, won=True)
         if len(losing_player_name) > 0:
-            if DB.get_player_stats(losing_player_name) == None:
+            if DB.get_player_stats(losing_player_name) is None:
                 DB.create_database_entry(losing_player_name)
             DB.record_game_results(losing_player_name, won=False)
 
     def get_statistics(self):
         return DB.get_all_stats()
 
-    def ping(self):
+    def _sync_server_dict_from_main(self) -> None:
+        """Fetch the server dictionary from the main server on startup."""
+        try:
+            proxy = self._new_proxy(self.main_server_address, timeout=3)
+            server_dict = proxy.send_server_dict()
+            if server_dict:
+                self.server_address_to_server_ba_number.update(server_dict)
+                print(f"[{self.address}] Synced server dict from main: "
+                      f"{self.server_address_to_server_ba_number}")
+            else:
+                print(f"[{self.address}] Main server returned empty dict.")
+        except Exception as e:
+            print(f"[{self.address}] Failed to sync server dict from main: {e}")
+            print(f"[{self.address}] Using local dict only: "
+                  f"{self.server_address_to_server_ba_number}")
+
+    def update_server_dict(self, address: str, ba_number: int) -> None:
+        """Adds address and ba_number to this game server's dictionary 
+        and propagates to all other servers."""
+        self.server_address_to_server_ba_number[address] = ba_number
+        print("Updated server_address_to_server_ba_number:",
+              self.server_address_to_server_ba_number)
+        # Broadcast updated dict to all other servers
+        self._broadcast_server_dict()
+
+    def _broadcast_server_dict(self) -> None:
+        """Send the current server_address_to_server_ba_number to all other servers."""
+        for other_addr in self.server_address_to_server_ba_number:
+            if other_addr == self.address:
+                continue
+            try:
+                proxy = self._new_proxy(other_addr, timeout=2)
+                proxy.receive_server_dict(self.server_address_to_server_ba_number)
+            except Exception as e:
+                print(f"[{self.address}] Failed to broadcast dict to {other_addr}: {e}")
+
+    def receive_server_dict(self, server_dict: dict) -> str:
+        """Receive server_address_to_server_ba_number from another server."""
+        self.server_address_to_server_ba_number.update(server_dict)
+        print(f"[{self.address}] Updated server dict from peer: {self.server_address_to_server_ba_number}")
+        return "OK"
+
+    def ping(self, address: str = "", ba_number: int = 0):
+        """Receive a ping from another server. Register if new."""
+        if (address not in self.server_address_to_server_ba_number) and (address != ""):
+            print("Ping received from", address, "with ba_number", ba_number)
+            self.update_server_dict(address, ba_number)
         return "pong"
 
     def _new_proxy(self, address: str, timeout=5):
@@ -136,61 +193,90 @@ class GameServer:
         """Periodically requests addresses and statistics data from the main server."""
         try:
             proxy = self._new_proxy(self.main_server_address)
-            result = proxy.ping()
+            result = proxy.ping(self.address, self.ba_number)
             print("Main server reply:", result)
+            self.connection_created = True
         except Exception as e:
             print("Error in poll_main_server:", e)
+            if self.connection_created and self.election_underway is False:
+                print("Lost connection to main server.")
+                print("Starting bully algorithm...")
+                self.start_bully_algorithm()
 
         threading.Timer(10, self.poll_main_server).start()
 
-    def update_server_dict(self, address: str, ba_number: int) -> None:
-        """Adds address and ba_number to this game server's dictionary."""
-        self.server_address_to_server_ba_number[address] = ba_number
-        if self.is_main_server():
-            # propagate update to each other server
-            for server_address in self.server_address_to_server_ba_number.keys():
-                if server_address == self.address or server_address == address:
-                    continue
-                proxy = self._new_proxy(server_address)
-                proxy.update_server_dict(address, ba_number)
-
-    def handle_bully_election_msg(self) -> None:
-        """Calls handle_bully_election_msg() in each known server with a lower ba_number than this server's own ba_number.
-        If no nodes with lower ba_numbers are known, then this server becomes the new main server.
-        """
-        lower_node_found = False
-        for (
-            other_server_address,
-            other_server_ba_number,
-        ) in self.server_address_to_server_ba_number.items():
-            if (
-                other_server_address == self.address
-                or other_server_ba_number > self.ba_number
-            ):
-                continue
-            proxy = self._new_proxy(other_server_address)
-            proxy.handle_bully_election_msg(
-                self.address
-            )  # send Election messages to each lower node
-            lower_node_found = True
-
-        if not lower_node_found:
-            # this server becomes the new main server
-            for other_server_address in self.server_address_to_server_ba_number.keys():
-                if other_server_address == self.address:
-                    continue
-            proxy = self._new_proxy(other_server_address)
-            proxy.handle_bully_coordinator_msg(
-                self.address
-            )  # send Coordinator messages to each other node
-
-    def handle_bully_coordinator_msg(self, new_coordinator_address: str) -> None:
-        """Sets the caller as the new main server."""
-        self.main_server_address = new_coordinator_address
+    def send_server_dict(self) -> dict:
+        """Returns this game server's dictionary of known servers."""
+        return self.server_address_to_server_ba_number
 
     def start_bully_algorithm(self) -> None:
-        """Starts the bully algorithm, see handle_bully_election_msg."""
-        self.handle_bully_election_msg("")
+        """Initiates bully election by sending ELECTION 
+        to all LOWER-numbered servers (reverse bully)."""
+        if self.election_underway:
+            print(f"[{self.address}] Election already underway, not starting another.")
+            return
+        self.election_underway = True
+        lower_nodes_contacted = False
+
+        for other_addr, other_ba in self.server_address_to_server_ba_number.items():
+            if other_addr == self.address:
+                continue
+            if int(other_ba) >= int(self.ba_number):
+                continue
+            try:
+                print(f"[{self.address}] Sending ELECTION to {other_addr} (ba_number {other_ba})")
+                proxy = self._new_proxy(other_addr, timeout=3)
+                response = proxy.handle_bully_election_msg(int(self.ba_number))
+                if response == "OK":
+                    lower_nodes_contacted = True
+                    print(f"[{self.address}] Received OK from {other_addr}")
+            except Exception as e:
+                print(f"[{self.address}] Failed to reach {other_addr}: {e}")
+
+        if not lower_nodes_contacted:
+            # No lower node responded
+            print(f"[{self.address}] No lower nodes found. I am the new coordinator!")
+            self.main_server_address = self.address
+            self.election_underway = False
+            self._announce_coordinator()
+
+    def _announce_coordinator(self) -> None:
+        """Announce this server as the new coordinator to all other servers."""
+        print(f"[{self.address}] Announcing new coordinator: {self.address}")
+        for other_addr in self.server_address_to_server_ba_number:
+            print(f"[{self.address}] Announcing to {other_addr}")
+            if other_addr == self.address:
+                continue
+            try:
+                proxy = self._new_proxy(other_addr, timeout=3)
+                answer = proxy.handle_bully_coordinator_msg(self.address, int(self.ba_number))
+                print(f"[{self.address}] {other_addr} replied: {answer}")
+            except Exception as e:
+                print(f"[{self.address}] Failed to announce to {other_addr}: {e}")
+
+
+    def handle_bully_coordinator_msg(self, new_coordinator_address:
+                                     str, new_coordinator_ba: int) -> str:
+        """Receive COORDINATOR announcement. Accept only 
+        if sender has LOWER BA (higher priority)."""
+        if int(new_coordinator_ba) < int(self.ba_number):
+            print(f"[{self.address}] New coordinator announced: {new_coordinator_address}")
+            self.main_server_address = new_coordinator_address
+            self.election_underway = False
+            return "OK"
+        else:
+            print(f"[{self.address}] Ignoring higher-priority coordinator "
+                  f"{new_coordinator_address} ({new_coordinator_ba})")
+            return "IGNORED"
+
+    def handle_bully_election_msg(self, ba_number: int) -> str:
+        """Receive ELECTION from another node. Reply OK immediately, 
+        then start our own election in background."""
+        print(f"[{self.address}] Received ELECTION message from ba_number {ba_number}")
+        if int(self.ba_number) < int(ba_number):
+            # Start election in background thread
+            threading.Thread(target=self.start_bully_algorithm, daemon=True).start()
+        return "OK"
 
 
 server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
