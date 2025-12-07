@@ -49,8 +49,9 @@
 
 <body>
   <div id="joinView">
+    <h1>Battleship</h1>
+    <button id="refreshServerListButton">Refresh server list</button>
     <div id="serverSelect" class="server-select">
-      <h1>Battleship</h1>
     </div>
     <br>
     <div>
@@ -98,6 +99,7 @@
       return res.json();
     }
 
+    const refreshServerListButton = document.getElementById('refreshServerListButton');
     const joinBtn = document.getElementById('joinBtn');
     const playerNameInput = document.getElementById('playerNameInput');
     const joinMsg = document.getElementById('joinMsg');
@@ -217,6 +219,7 @@
 
         // build select UI inside #serverSelect
         const container = document.getElementById('serverSelect');
+        container.innerHTML = '';
         const sel = document.createElement('select');
         sel.id = 'server';
         sel.style.minWidth = '320px';
@@ -242,6 +245,12 @@
       }
     }
     loadServers();
+
+    refreshServerListButton.addEventListener('click', async () => {
+      refreshServerListButton.textContent = 'Refreshing server list...';
+      await loadServers();
+      refreshServerListButton.textContent = 'Refresh server list';
+    });
 
     joinBtn.addEventListener('click', async () => {
       joinBtn.textContent = 'Joining...';
