@@ -1,6 +1,7 @@
 # pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
 # pylint: disable=missing-function-docstring,missing-class-docstring
 import os
+import sys
 
 from dotenv import load_dotenv
 from pymongo.mongo_client import MongoClient
@@ -11,7 +12,8 @@ load_dotenv()
 # Before running, create a .env file in the root folder and set the DATABASE_PASSWORD there
 DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
 
-URI = f"mongodb+srv://juhanikataja:{DATABASE_PASSWORD}@cluster0.stid8ni.mongodb.net/?appName=Cluster0"
+URI = f"mongodb+srv://juhanikataja:{DATABASE_PASSWORD} \
+        @cluster0.stid8ni.mongodb.net/?appName=Cluster0"
 
 # Create a new client and connect to the server
 with MongoClient(URI, server_api=ServerApi('1')) as client:
@@ -24,7 +26,7 @@ with MongoClient(URI, server_api=ServerApi('1')) as client:
         print("Pinged your deployment. You successfully connected to MongoDB!")
     except Exception as e:
         print(e)
-        exit()
+        sys.exit()
 
     # test user creation, these can create duplicates
     user = {"name": "VP", "matches_won": 12, "matches_lost": 8}

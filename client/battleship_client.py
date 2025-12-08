@@ -31,7 +31,9 @@ def handle_error(error, message: str, error_code: int = 500) -> Response:
 
 
 def _new_proxy(timeout=5):
-    return ServerProxy(request.cookies.get("server_url"), allow_none=True, transport=TimeoutTransport(timeout=timeout))
+    return ServerProxy(request.cookies.get("server_url"),
+                       allow_none=True,
+                       transport=TimeoutTransport(timeout=timeout))
 
 
 app = Flask(__name__, static_folder=None)
@@ -154,7 +156,8 @@ def api_statistics():
 @app.route('/api/quit', methods=['POST'])
 def api_quit():
     """Resets cookies and sends player back to server select screen. 
-    Once one player quits the game, the other will be shown a message that tells them to refresh the page to join a new game."""
+    Once one player quits the game, the other will be shown a message 
+    that tells them to refresh the page to join a new game."""
     try:
         game_id = request.cookies.get("game_id")
         player_id = request.cookies.get("player_id")

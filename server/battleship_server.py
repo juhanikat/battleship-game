@@ -87,12 +87,11 @@ class GameServer:
             self.new_game_id = str(uuid4())
             print(1, self.new_game_id)
             return (1, self.new_game_id)
-        elif self.wait_for_second:
-            self.wait_for_second = False
-            self.second_player_name = player_name
-            self.new_game()
-            print(2, self.new_game_id)
-            return (2, self.new_game_id)
+        self.wait_for_second = False
+        self.second_player_name = player_name
+        self.new_game()
+        print(2, self.new_game_id)
+        return (2, self.new_game_id)
 
     def get_state(self, game_id):
         return self.games[game_id].get_state()
@@ -169,7 +168,8 @@ class GameServer:
     def receive_server_dict(self, server_dict: dict) -> str:
         """Receive server_address_to_server_ba_number from another server."""
         self.server_address_to_server_ba_number.update(server_dict)
-        print(f"[{self.address}] Updated server dict from peer: {self.server_address_to_server_ba_number}")
+        print(f"[{self.address}] Updated server dict from peer: "
+              f"{self.server_address_to_server_ba_number}")
         return "OK"
 
     def ping(self, address: str = "", ba_number: int = 0):
@@ -264,10 +264,9 @@ class GameServer:
             self.main_server_address = new_coordinator_address
             self.election_underway = False
             return "OK"
-        else:
-            print(f"[{self.address}] Ignoring higher-priority coordinator "
-                  f"{new_coordinator_address} ({new_coordinator_ba})")
-            return "IGNORED"
+        print(f"[{self.address}] Ignoring higher-priority coordinator "
+              f"{new_coordinator_address} ({new_coordinator_ba})")
+        return "IGNORED"
 
     def handle_bully_election_msg(self, ba_number: int) -> str:
         """Receive ELECTION from another node. Reply OK immediately, 
