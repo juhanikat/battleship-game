@@ -12,12 +12,16 @@ The client should be available at `https://sauce-tennis-used-profession.trycloud
 
 Server:
 
-When the GameServer is started, it checks if the database file `statistics_database.db` exists, and creates it if not.
-1. Create a virtual environment `python -m venv .venv` and activate it `source .venv/bin/activate`
-2. Install required packages: `pip install -r requirements.txt`
-3. Create a .env file in the root folder and set the `DATABASE_PASSWORD` env variable to the password of the database
-4. Run the file: `python example_database_connection.py`
-5. Add `SERVERLIST` variable to .env file and list all available servers under that. Example: `SERVERLIST=http://localhost:8000,https://battleship.example.com`
+When the GameServer is started, it checks if the database file `statistics_database.db` exists, and creates it if not. To host the server locally:
+
+1. Download the server directory from the GitHub repository and open it
+2. Create a virtual environment `python -m venv .venv` and activate it `source .venv/bin/activate`
+3. Install required packages: `pip install -r requirements.txt`
+4. Create a .env file in the root folder and:
+    - set the `MAIN_SERVER_ADDRESS` env variable to the address of the main server (same as this server's address if this is the main server)
+    - set the `SERVER_ADDRESS` env variable to the address of this server (e.g. https://battleship.example.com)
+    - set the `BA_NUMBER` env variable to the integer that is used on the Bully Algorithm for this server (make sure this is different for all servers)
+5. Run the file: `python battleship_server.py`
 
 # Main Server and Bully Algorithm
 
