@@ -1,3 +1,5 @@
+# pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
+# pylint: disable=missing-function-docstring,missing-class-docstring
 import os
 import traceback
 import xmlrpc.client
@@ -138,7 +140,7 @@ def api_config():
         return jsonify({"servers": servers, "default": default})
     except Exception as e:
         return handle_error(e, "Error in /api/config")
-    
+
 @app.route('/api/statistics', methods=['GET'])
 def api_statistics():
     try:
@@ -157,7 +159,7 @@ def api_quit():
         game_id = request.cookies.get("game_id")
         player_id = request.cookies.get("player_id")
         proxy = _new_proxy()
-        res = proxy.quit(game_id, player_id) 
+        res = proxy.quit(game_id, player_id)
         response = make_response(jsonify(res))
         response.set_cookie("player_id", "", expires=0)
         response.set_cookie("game_id", "", expires=0)
