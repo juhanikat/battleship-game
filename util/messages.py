@@ -1,3 +1,5 @@
+# pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
+# pylint: disable=missing-function-docstring,missing-class-docstring,too-few-public-methods
 from typing import TypedDict
 
 
