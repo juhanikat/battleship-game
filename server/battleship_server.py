@@ -46,7 +46,7 @@ class GameServer:
         self.second_player_name = ""
 
         if not DB.scores_exist():
-            DB.init_database(insert_test_data=True)
+            DB.init_database(insert_test_data=False)
 
         # matches every known server's address to their Bully Algorithm number
         # Example:
