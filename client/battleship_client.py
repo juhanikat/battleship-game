@@ -143,6 +143,7 @@ def api_config():
     except Exception as e:
         return handle_error(e, "Error in /api/config")
 
+
 @app.route('/api/statistics', methods=['GET'])
 def api_statistics():
     try:

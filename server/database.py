@@ -29,7 +29,7 @@ def init_database(insert_test_data: bool = False) -> None:
     # this seems to be automatically committed, resulting
     # in weird behavior if the function fails after this line
     cur.execute(
-        "CREATE TABLE statistics(player_id INTEGER PRIMARY KEY AUTOINCREMENT, " \
+        "CREATE TABLE statistics(player_id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "player_name UNIQUE, games_won, games_lost)")
 
     if insert_test_data:
