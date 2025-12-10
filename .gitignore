@@ -1,4 +1,5 @@
 .venv
+client/.env
 server/.env
 __pycache__
 
