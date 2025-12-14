@@ -127,7 +127,7 @@ def fetch_servers() -> dict:
             continue
 
     if not servers:
-        raise Exception(
+        raise RuntimeError(
             "Could not get the server dict from any known server")
 
     return servers

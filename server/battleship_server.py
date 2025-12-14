@@ -64,7 +64,7 @@ class GameServer:
 
         self.connection_created = False
         self.election_underway = False
-
+        self.main_server_address = ""
         # ask servers in SERVERLIST for the main server's address
         self.find_main_server()
 
@@ -136,14 +136,14 @@ class GameServer:
     def find_main_server(self):
         """Loops through servers in SERVERLIST until it finds the main server.
         If it's not found, starts a new election."""
-        for server in (os.getenv("SERVERLIST")).split(","):
+        for item in (os.getenv("SERVERLIST")).split(","):
             try:
-                proxy = self._new_proxy(server)
+                proxy = self._new_proxy(item)
                 server_config = proxy.get_server_config()
-                if server_config['is_main_server'] == True:
+                if server_config['is_main_server'] is True:
                     self.main_server_address = server_config['address']
                     return
-            except Exception as e:
+            except Exception:
                 continue
 
         print("No main server found, starting election...")
