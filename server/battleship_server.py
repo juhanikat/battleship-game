@@ -1,12 +1,13 @@
 # pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
 # pylint: disable=missing-function-docstring,missing-class-docstring,import-error
+import os
 import threading
+import xmlrpc
 from socketserver import ThreadingMixIn
 from uuid import uuid4
-import xmlrpc
-from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.client import ServerProxy
-import os
+from xmlrpc.server import SimpleXMLRPCServer
+
 import database as DB
 from battleship_game import BattleshipGame
 from dotenv import find_dotenv, load_dotenv
@@ -45,7 +46,7 @@ class GameServer:
         self.second_player_name = ""
 
         if not DB.scores_exist():
-            DB.init_database(insert_test_data=True)
+            DB.init_database(insert_test_data=False)
 
         # matches every known server's address to their Bully Algorithm number
         # Example:
@@ -161,9 +162,11 @@ class GameServer:
                 continue
             try:
                 proxy = self._new_proxy(other_addr, timeout=2)
-                proxy.receive_server_dict(self.server_address_to_server_ba_number)
+                proxy.receive_server_dict(
+                    self.server_address_to_server_ba_number)
             except Exception as e:
-                print(f"[{self.address}] Failed to broadcast dict to {other_addr}: {e}")
+                print(
+                    f"[{self.address}] Failed to broadcast dict to {other_addr}: {e}")
 
     def receive_server_dict(self, server_dict: dict) -> str:
         """Receive server_address_to_server_ba_number from another server."""
@@ -213,7 +216,8 @@ class GameServer:
         """Initiates bully election by sending ELECTION 
         to all LOWER-numbered servers (reverse bully)."""
         if self.election_underway:
-            print(f"[{self.address}] Election already underway, not starting another.")
+            print(
+                f"[{self.address}] Election already underway, not starting another.")
             return
         self.election_underway = True
         lower_nodes_contacted = False
@@ -224,7 +228,8 @@ class GameServer:
             if int(other_ba) >= int(self.ba_number):
                 continue
             try:
-                print(f"[{self.address}] Sending ELECTION to {other_addr} (ba_number {other_ba})")
+                print(
+                    f"[{self.address}] Sending ELECTION to {other_addr} (ba_number {other_ba})")
                 proxy = self._new_proxy(other_addr, timeout=3)
                 response = proxy.handle_bully_election_msg(int(self.ba_number))
                 if response == "OK":
@@ -235,7 +240,8 @@ class GameServer:
 
         if not lower_nodes_contacted:
             # No lower node responded
-            print(f"[{self.address}] No lower nodes found. I am the new coordinator!")
+            print(
+                f"[{self.address}] No lower nodes found. I am the new coordinator!")
             self.main_server_address = self.address
             self.election_underway = False
             self._announce_coordinator()
@@ -249,18 +255,19 @@ class GameServer:
                 continue
             try:
                 proxy = self._new_proxy(other_addr, timeout=3)
-                answer = proxy.handle_bully_coordinator_msg(self.address, int(self.ba_number))
+                answer = proxy.handle_bully_coordinator_msg(
+                    self.address, int(self.ba_number))
                 print(f"[{self.address}] {other_addr} replied: {answer}")
             except Exception as e:
                 print(f"[{self.address}] Failed to announce to {other_addr}: {e}")
-
 
     def handle_bully_coordinator_msg(self, new_coordinator_address:
                                      str, new_coordinator_ba: int) -> str:
         """Receive COORDINATOR announcement. Accept only 
         if sender has LOWER BA (higher priority)."""
         if int(new_coordinator_ba) < int(self.ba_number):
-            print(f"[{self.address}] New coordinator announced: {new_coordinator_address}")
+            print(
+                f"[{self.address}] New coordinator announced: {new_coordinator_address}")
             self.main_server_address = new_coordinator_address
             self.election_underway = False
             return "OK"
@@ -271,10 +278,12 @@ class GameServer:
     def handle_bully_election_msg(self, ba_number: int) -> str:
         """Receive ELECTION from another node. Reply OK immediately, 
         then start our own election in background."""
-        print(f"[{self.address}] Received ELECTION message from ba_number {ba_number}")
+        print(
+            f"[{self.address}] Received ELECTION message from ba_number {ba_number}")
         if int(self.ba_number) < int(ba_number):
             # Start election in background thread
-            threading.Thread(target=self.start_bully_algorithm, daemon=True).start()
+            threading.Thread(target=self.start_bully_algorithm,
+                             daemon=True).start()
         return "OK"
 
 
