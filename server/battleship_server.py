@@ -55,7 +55,7 @@ class GameServer:
 
         # updated after a bully algorithm run, the default value
         # must be set to current main server address before running!
-        self.main_server_address = os.getenv("MAIN_SERVER_ADDRESS")
+        self.env_serverlist = os.getenv("SERVERLIST")
         self.address = os.getenv("SERVER_ADDRESS")
         self.ba_number = os.getenv(
             "BA_NUMBER"
@@ -64,6 +64,9 @@ class GameServer:
 
         self.connection_created = False
         self.election_underway = False
+
+        # ask servers in SERVERLIST for the main server's address
+        self.find_main_server()
 
         # fetch server dict from main server on startup
         self._sync_server_dict_from_main()
@@ -130,6 +133,25 @@ class GameServer:
     def get_statistics(self):
         return DB.get_all_stats()
 
+    def find_main_server(self):
+        """Loops through servers in SERVERLIST until it finds the main server.
+        If it's not found, starts a new election."""
+        for server in (os.getenv("SERVERLIST")).split(","):
+            try:
+                proxy = self._new_proxy(server)
+                server_config = proxy.get_server_config()
+                if server_config['is_main_server'] == True:
+                    self.main_server_address = server_config['address']
+                    return
+            except Exception as e:
+                continue
+
+        print("No main server found, starting election...")
+        self.start_bully_algorithm()
+
+    def get_server_config(self):
+        return {"address": self.address, "is_main_server": self.is_main_server()}
+
     def _sync_server_dict_from_main(self) -> None:
         """Fetch the server dictionary from the main server on startup."""
         try:
@@ -194,6 +216,10 @@ class GameServer:
 
     def poll_main_server(self):
         """Periodically requests addresses and statistics data from the main server."""
+        if self.address == self.main_server_address:
+            print("Tried to poll main server, but this server is the main server.")
+            threading.Timer(10, self.poll_main_server).start()
+            return
         try:
             proxy = self._new_proxy(self.main_server_address)
             result = proxy.ping(self.address, self.ba_number)
@@ -287,7 +313,7 @@ class GameServer:
         return "OK"
 
 
-server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
+server = ThreadedXMLRPCServer(("localhost", 8001), allow_none=True)
 server.allow_reuse_address = True
 server.register_instance(GameServer())
 print("Battleship XML-RPC server running on port 8000...")
