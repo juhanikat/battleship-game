@@ -1,3 +1,5 @@
+# pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
+# pylint: disable=missing-function-docstring,missing-class-docstring,import-error
 import os
 import traceback
 import xmlrpc.client
@@ -29,7 +31,9 @@ def handle_error(error, message: str, error_code: int = 500) -> Response:
 
 
 def _new_proxy(timeout=5):
-    return ServerProxy(request.cookies.get("server_url"), allow_none=True, transport=TimeoutTransport(timeout=timeout))
+    return ServerProxy(request.cookies.get("server_url"),
+                       allow_none=True,
+                       transport=TimeoutTransport(timeout=timeout))
 
 
 app = Flask(__name__, static_folder=None)
@@ -109,12 +113,36 @@ def _proxy_for(server_url: str, timeout=2):
     return ServerProxy(s, allow_none=True, transport=TimeoutTransport(timeout=timeout))
 
 
+def fetch_servers() -> dict:
+    """Called internally by the client to fetch a server list.
+    Loops through servers in SERVERLIST env variable and tries to fetch the server dict from them.
+    Remember to call this in a try-except block!"""
+    servers = []
+    for env_server in (os.getenv("SERVERLIST")).split(","):
+        try:
+            proxy = _proxy_for(env_server)
+            servers = list(proxy.send_server_dict().keys())
+            break
+        except Exception as _:
+            continue
+
+    if not servers:
+        raise Exception(
+            "Could not get the server dict from any known server")
+
+    return servers
+
+
 @app.route('/api/ping_all', methods=['GET'])
 def api_ping_all():
-    """Ping every server from SERVERLIST and return success/error for each."""
+    """Ping every server from fetch_servers() and return success/error for each."""
+    servers = []
     try:
-        servers_env = os.getenv("SERVERLIST", "http://localhost:8000")
-        servers = [s.strip() for s in servers_env.split(",") if s.strip()]
+        try:
+            servers = fetch_servers()
+        except Exception as fetch_servers_error:
+            return handle_error(fetch_servers_error, "Error in fetch_servers()")
+
         results = []
         for s in servers:
             try:
@@ -130,15 +158,16 @@ def api_ping_all():
 
 
 @app.route('/api/config', methods=['GET'])
-def api_config():
+def api_config() -> Response:
     """Returns server configuration such as available servers."""
     try:
-        servers = (os.getenv("SERVERLIST")).split(",")
-        default = servers[0] if servers else "http://localhost:8000"
-        return jsonify({"servers": servers, "default": default})
+        servers = fetch_servers()
+        config = {'servers': servers, 'default': servers[0]}
+        return jsonify(config)
     except Exception as e:
         return handle_error(e, "Error in /api/config")
-    
+
+
 @app.route('/api/statistics', methods=['GET'])
 def api_statistics():
     try:
@@ -152,12 +181,13 @@ def api_statistics():
 @app.route('/api/quit', methods=['POST'])
 def api_quit():
     """Resets cookies and sends player back to server select screen. 
-    Once one player quits the game, the other will be shown a message that tells them to refresh the page to join a new game."""
+    Once one player quits the game, the other will be shown a message 
+    that tells them to refresh the page to join a new game."""
     try:
         game_id = request.cookies.get("game_id")
         player_id = request.cookies.get("player_id")
         proxy = _new_proxy()
-        res = proxy.quit(game_id, player_id) 
+        res = proxy.quit(game_id, player_id)
         response = make_response(jsonify(res))
         response.set_cookie("player_id", "", expires=0)
         response.set_cookie("game_id", "", expires=0)

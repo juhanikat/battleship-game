@@ -1,3 +1,5 @@
+# pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
+# pylint: disable=missing-function-docstring,missing-class-docstring
 import random
 
 
@@ -6,6 +8,9 @@ class BattleshipGame:
         self.grid_size = 5
         self.ship_sizes = [3, 2]
         self.reset()
+        self.current_player = 1
+        self.winner = None
+        self.game_canceled = False
 
     def reset(self):
         self.p1_grid = self.create_grid()
@@ -70,7 +75,7 @@ class BattleshipGame:
         try:
             row = int(row)
             col = int(col)
-        except:
+        except (ValueError, TypeError):
             return {"error": "invalid coordinates"}
 
         if not (0 <= row < self.grid_size and 0 <= col < self.grid_size):

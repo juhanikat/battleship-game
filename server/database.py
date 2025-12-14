@@ -1,3 +1,5 @@
+# pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
+# pylint: disable=missing-function-docstring,missing-class-docstring
 import sqlite3
 from typing import TypedDict
 
@@ -24,9 +26,11 @@ def init_database(insert_test_data: bool = False) -> None:
     """Called when a game server starts to create the database and the statistics table."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
-    # this seems to be automatically committed, resulting in weird behavior if the function fails after this line
+    # this seems to be automatically committed, resulting
+    # in weird behavior if the function fails after this line
     cur.execute(
-        "CREATE TABLE statistics(player_id INTEGER PRIMARY KEY AUTOINCREMENT, player_name UNIQUE, games_won, games_lost)")
+        "CREATE TABLE statistics(player_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "player_name UNIQUE, games_won, games_lost)")
 
     if insert_test_data:
         cur.execute(
@@ -39,7 +43,8 @@ def init_database(insert_test_data: bool = False) -> None:
 
 
 def scores_exist() -> bool:
-    """Returns True if the statistics table exists (init_database() has been called), or False otherwise."""
+    """Returns True if the statistics table exists 
+    (init_database() has been called), or False otherwise."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
     cur.execute(
@@ -47,13 +52,14 @@ def scores_exist() -> bool:
     table_name = cur.fetchone()
     con.close()
 
-    if table_name == None:
+    if table_name is None:
         return False
     return True
 
 
 def get_all_stats() -> list[Stats] | None:
-    """Returns a list of Stats dicts for all players in database, or None if the database is empty."""
+    """Returns a list of Stats dicts for all players in database, 
+    or None if the database is empty."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
     cur.execute(
@@ -75,7 +81,8 @@ def get_player_stats(player_name: str) -> Stats | None:
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
     cur.execute(
-        "SELECT player_id, player_name, games_won, games_lost FROM statistics WHERE player_name = ?", [(player_name)])
+        "SELECT player_id, player_name, games_won, games_lost "
+        "FROM statistics WHERE player_name = ?", [(player_name)])
     result = cur.fetchone()
     con.commit()
     con.close()
@@ -86,7 +93,8 @@ def get_player_stats(player_name: str) -> Stats | None:
 
 
 def create_database_entry(player_name: str) -> int | bool:
-    """Adds a new player into the statistics table, and returns their ID. If a player with that name already exists, returns False."""
+    """Adds a new player into the statistics table, and returns their ID.
+    If a player with that name already exists, returns False."""
     con = sqlite3.connect("statistics_database.db")
     cur = con.cursor()
 
@@ -112,11 +120,13 @@ def record_game_results(player_name: str, won: bool) -> None:
     cur = con.cursor()
     if won:
         cur.execute(
-            "UPDATE statistics SET games_won = games_won + 1 WHERE player_name = ?", [(player_name)])
+            "UPDATE statistics SET games_won = games_won + 1 "
+            "WHERE player_name = ?", [(player_name)])
         print(f"Increased {player_name}'s won games amount by 1")
     else:
         cur.execute(
-            "UPDATE statistics SET games_lost = games_lost + 1 WHERE player_name = ?", [(player_name)])
+            "UPDATE statistics SET games_lost = games_lost + 1 "
+            "WHERE player_name = ?", [(player_name)])
         print(f"Increased {player_name}'s lost games amount by 1")
     con.commit()
     con.close()
