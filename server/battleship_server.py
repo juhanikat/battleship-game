@@ -364,8 +364,8 @@ class GameServer:
         return "OK"
 
 
-server = ThreadedXMLRPCServer(("localhost", 8002), allow_none=True)
+server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
 server.allow_reuse_address = True
 server.register_instance(GameServer())
-print("Battleship XML-RPC server running on port 8002...")
+print("Battleship XML-RPC server running on port 8000...")
 server.serve_forever()
