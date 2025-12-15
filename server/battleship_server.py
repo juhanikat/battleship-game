@@ -65,7 +65,7 @@ class GameServer:
         self.connection_created = False
         self.election_underway = False
         self.main_server_address = ""
-        # ask servers in SERVERLIST for the main server's address
+        # ask servers in SERVERLIST for the main server's address (if not found, starts an election)
         self.find_main_server()
 
         # fetch server dict from main server on startup
@@ -167,8 +167,8 @@ class GameServer:
             try:
                 proxy = self._new_proxy(item)
                 server_config = proxy.get_server_config()
-                if server_config['is_main_server'] is True:
-                    self.main_server_address = server_config['address']
+                if server_config['main_server_address']:
+                    self.main_server_address = server_config['main_server_address']
                     return
             except Exception:
                 continue
@@ -177,7 +177,7 @@ class GameServer:
         self.start_bully_algorithm()
 
     def get_server_config(self):
-        return {"address": self.address, "is_main_server": self.is_main_server()}
+        return {"address": self.address, "main_server_address": self.main_server_address}
 
     def _sync_server_dict_from_main(self) -> None:
         """Fetch the server dictionary from the main server on startup."""
@@ -287,7 +287,8 @@ class GameServer:
                 proxy = self._new_proxy(other_addr)
                 proxy.receive_statistics_update(stats_list)
             except Exception as e:
-                print(f"[{self.address}] Failed to broadcast statistics to {other_addr}: {e}")
+                print(
+                    f"[{self.address}] Failed to broadcast statistics to {other_addr}: {e}")
 
     def start_bully_algorithm(self) -> None:
         """Initiates bully election by sending ELECTION 
