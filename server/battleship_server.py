@@ -1,6 +1,8 @@
 # pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
 # pylint: disable=missing-function-docstring,missing-class-docstring,import-error
+# pylint: disable=too-many-instance-attributes,too-many-public-methods,wrong-import-order
 import os
+import sys
 import threading
 import xmlrpc
 from socketserver import ThreadingMixIn
@@ -105,7 +107,9 @@ class GameServer:
 
     def fire(self, game_id, player_id: int, row, col):
         result = self.games[game_id].fire(player_id, row, col)
-        if "winner" in result.keys() and "error" not in result.keys() and result["winner"] is not None:
+        if ("winner" in result.keys()
+            and "error" not in result.keys()
+                and result["winner"] is not None):
             # game is over, record statistics for both players
             winner = result["winner"]
             loser = 1 if winner == 2 else 2
@@ -164,8 +168,9 @@ class GameServer:
         return DB.get_all_stats()
 
     def get_all_statistics_from_main(self):
-        """Every normal server calls this once in a while to replace their statistics table with the main server's.
-        This ensures that any server will be back to a relatively up-to-date state if they lose connection for a while."""
+        """Every normal server calls this once in a while to replace their statistics table with 
+        the main server's. This ensures that any server will be back to a relatively up-to-date 
+        state if they lose connection for a while."""
         if self.is_main_server():
             # if this is the main server, nothing happens
             return
@@ -389,7 +394,7 @@ try:
     port_number = int(os.getenv("LOCALHOST_PORT_NUMBER"))
 except Exception as e:
     print("Invalid or missing LOCALHOST_PORT_NUMBER env variable!")
-    exit()
+    sys.exit()
 
 server = ThreadedXMLRPCServer(("localhost", port_number), allow_none=True)
 server.allow_reuse_address = True
