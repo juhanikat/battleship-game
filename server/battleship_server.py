@@ -74,6 +74,9 @@ class GameServer:
         # polls main server every 10 seconds
         self.poll_main_server()
 
+        # replaces local statistics table with the main server's statistics table every 15 minutes
+        threading.Timer(900, self.get_all_statistics_from_main).start()
+
     def new_game(self):
         create_game = BattleshipGame()
         create_game.start_game()
@@ -160,8 +163,23 @@ class GameServer:
     def get_statistics(self):
         return DB.get_all_stats()
 
+    def get_all_statistics_from_main(self):
+        """Every normal server calls this once in a while to replace their statistics table with the main server's.
+        This ensures that any server will be back to a relatively up-to-date state if they lose connection for a while."""
+        if self.is_main_server():
+            # if this is the main server, nothing happens
+            return
+        try:
+            proxy = self._new_proxy(self.main_server_address)
+            statistics = proxy.get_statistics()
+            DB.upsert_stats(statistics)
+        except Exception as e:
+            print(f"[{self.address}] Failed to get all statistics from main: {e}")
+
+        threading.Timer(900, self.get_all_statistics_from_main).start()
+
     def find_main_server(self):
-        """Loops through servers in SERVERLIST until it finds the main server.
+        """Loops through servers in SERVERLIST until it finds the address of the main server.
         If it's not found, starts a new election."""
         for item in (os.getenv("SERVERLIST")).split(","):
             try:
