@@ -535,7 +535,7 @@ ignore-signatures=yes
 # Minimum lines number of a similarity.
 min-similarity-lines=4
 
-
+ignore-lines=yes
 [SPELLING]
 
 # Limits count of emitted suggestions for spelling mistakes.
