@@ -1,6 +1,7 @@
 # pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
 # pylint: disable=missing-function-docstring,missing-class-docstring,import-error
 # pylint: disable=too-many-instance-attributes,too-many-public-methods,wrong-import-order
+# pylint: disable=duplicate-code
 import os
 import sys
 import threading
