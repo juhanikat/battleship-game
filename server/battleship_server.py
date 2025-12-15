@@ -105,7 +105,7 @@ class GameServer:
 
     def fire(self, game_id, player_id: int, row, col):
         result = self.games[game_id].fire(player_id, row, col)
-        if "winner" in result.keys() and result["winner"] is not None:
+        if "winner" in result.keys() and "error" not in result.keys() and result["winner"] is not None:
             # game is over, record statistics for both players
             winner = result["winner"]
             loser = 1 if winner == 2 else 2
