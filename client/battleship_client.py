@@ -196,5 +196,12 @@ def api_quit():
     return response
 
 
+try:
+    # get the port number from the env
+    port_number = int(os.getenv("LOCALHOST_PORT_NUMBER"))
+except Exception as e:
+    print("Invalid or missing LOCALHOST_PORT_NUMBER env variable!")
+    exit()
+
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True, threaded=True)
+    app.run(host='127.0.0.1', port=port_number, debug=True, threaded=True)
