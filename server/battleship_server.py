@@ -64,7 +64,7 @@ class GameServer:
 
         self.connection_created = False
         self.election_underway = False
-
+        self.main_server_address = ""
         # ask servers in SERVERLIST for the main server's address
         self.find_main_server()
 
@@ -129,6 +129,33 @@ class GameServer:
             if DB.get_player_stats(losing_player_name) is None:
                 DB.create_database_entry(losing_player_name)
             DB.record_game_results(losing_player_name, won=False)
+        if len(winning_player_name) > 0 or len(losing_player_name) > 0:
+            self.sync_statistics(winning_player_name, losing_player_name)
+
+    def sync_statistics(
+        self, winning_player_name: str, losing_player_name: str
+    ) -> None:
+        """Fetches updated statistics for both players and
+        sends them to the main server (if not main) or broadcasts them (if main)."""
+        try:
+            updated = []
+            for name in [winning_player_name, losing_player_name]:
+                if not name:
+                    continue
+                s = DB.get_player_stats(name)
+                if s:
+                    updated.append(s)
+            if not updated:
+                return
+            if self.is_main_server():
+                # If we're main, broadcast the updated stats to all peers
+                self._broadcast_statistics(updated)
+            else:
+                # Send to main; main will rebroadcast
+                proxy = self._new_proxy(self.main_server_address, timeout=3)
+                proxy.receive_statistics_update(updated)
+        except Exception as e:
+            print(f"[{self.address}] Failed to sync statistics: {e}")
 
     def get_statistics(self):
         return DB.get_all_stats()
@@ -136,14 +163,14 @@ class GameServer:
     def find_main_server(self):
         """Loops through servers in SERVERLIST until it finds the main server.
         If it's not found, starts a new election."""
-        for server in (os.getenv("SERVERLIST")).split(","):
+        for item in (os.getenv("SERVERLIST")).split(","):
             try:
-                proxy = self._new_proxy(server)
+                proxy = self._new_proxy(item)
                 server_config = proxy.get_server_config()
-                if server_config['is_main_server'] == True:
+                if server_config['is_main_server'] is True:
                     self.main_server_address = server_config['address']
                     return
-            except Exception as e:
+            except Exception:
                 continue
 
         print("No main server found, starting election...")
@@ -238,6 +265,30 @@ class GameServer:
         """Returns this game server's dictionary of known servers."""
         return self.server_address_to_server_ba_number
 
+    def receive_statistics_update(self, stats_list: list[dict]) -> str:
+        """Receive statistics updates from a peer; upsert locally and broadcast if main."""
+        try:
+            # Upsert into local DB
+            DB.upsert_stats(stats_list)  # type: ignore[arg-type]
+            if self.is_main_server():
+                # Re-broadcast to others
+                self._broadcast_statistics(stats_list)
+            return "OK"
+        except Exception as e:
+            print(f"[{self.address}] Error in receive_statistics_update: {e}")
+            return "ERROR"
+
+    def _broadcast_statistics(self, stats_list: list[dict]) -> None:
+        """Broadcast statistics updates to all known peers (excluding self)."""
+        for other_addr in self.server_address_to_server_ba_number:
+            if other_addr == self.address:
+                continue
+            try:
+                proxy = self._new_proxy(other_addr)
+                proxy.receive_statistics_update(stats_list)
+            except Exception as e:
+                print(f"[{self.address}] Failed to broadcast statistics to {other_addr}: {e}")
+
     def start_bully_algorithm(self) -> None:
         """Initiates bully election by sending ELECTION 
         to all LOWER-numbered servers (reverse bully)."""
@@ -313,7 +364,7 @@ class GameServer:
         return "OK"
 
 
-server = ThreadedXMLRPCServer(("localhost", 8001), allow_none=True)
+server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
 server.allow_reuse_address = True
 server.register_instance(GameServer())
 print("Battleship XML-RPC server running on port 8000...")

@@ -22,6 +22,35 @@ def database_entry_to_stats(result: tuple) -> Stats:
     return stats
 
 
+def upsert_stats(stats_list: list[Stats]) -> None:
+    """Upserts a list of Stats rows into the local database by player_name.
+    Creates missing players and updates games_won/games_lost to the provided values."""
+    con = sqlite3.connect("statistics_database.db")
+    cur = con.cursor()
+    for s in stats_list:
+        # Try update; if no rows affected, insert
+        cur.execute(
+            "UPDATE statistics SET games_won = ?, games_lost = ? WHERE player_name = ?",
+            [s["games_won"], s["games_lost"], s["player_name"]],
+        )
+        if cur.rowcount == 0:
+            try:
+                # Make new entry when update affected no rows (i.e. player_name not found)
+                cur.execute(
+                    "INSERT INTO statistics(player_name, games_won, games_lost) VALUES(?, ?, ?)",
+                    [s["player_name"], s["games_won"], s["games_lost"]],
+                )
+            except sqlite3.IntegrityError:
+                # In case of race condition, try update again. This activates only
+                # if new name is added between the first update and the insert.
+                cur.execute(
+                    "UPDATE statistics SET games_won = ?, games_lost = ? WHERE player_name = ?",
+                    [s["games_won"], s["games_lost"], s["player_name"]],
+                )
+    con.commit()
+    con.close()
+
+
 def init_database(insert_test_data: bool = False) -> None:
     """Called when a game server starts to create the database and the statistics table."""
     con = sqlite3.connect("statistics_database.db")
