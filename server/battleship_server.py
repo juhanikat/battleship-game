@@ -383,7 +383,14 @@ class GameServer:
         return "OK"
 
 
-server = ThreadedXMLRPCServer(("localhost", 8000), allow_none=True)
+try:
+    # get the port number from the env
+    port_number = int(os.getenv("LOCALHOST_PORT_NUMBER"))
+except Exception as e:
+    print("Invalid or missing LOCALHOST_PORT_NUMBER env variable!")
+    exit()
+
+server = ThreadedXMLRPCServer(("localhost", port_number), allow_none=True)
 server.allow_reuse_address = True
 server.register_instance(GameServer())
 print("Battleship XML-RPC server running on port 8000...")
