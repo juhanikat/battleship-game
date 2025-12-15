@@ -173,6 +173,7 @@ class GameServer:
             proxy = self._new_proxy(self.main_server_address)
             statistics = proxy.get_statistics()
             DB.upsert_stats(statistics)
+            print("Replaced the statistics table with main server's statistics.")
         except Exception as e:
             print(f"[{self.address}] Failed to get all statistics from main: {e}")
 
