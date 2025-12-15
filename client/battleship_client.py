@@ -1,6 +1,7 @@
 # pylint: disable=broad-except,unused-argument,missing-module-docstring,fixme,missing-docstring
 # pylint: disable=missing-function-docstring,missing-class-docstring,import-error
 import os
+import sys
 import traceback
 import xmlrpc.client
 from xmlrpc.client import ServerProxy
@@ -201,7 +202,7 @@ try:
     port_number = int(os.getenv("LOCALHOST_PORT_NUMBER"))
 except Exception as e:
     print("Invalid or missing LOCALHOST_PORT_NUMBER env variable!")
-    exit()
+    sys.exit()
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=port_number, debug=True, threaded=True)
